@@ -3,13 +3,14 @@
 #include <opencv2/opencv.hpp>
 
 extern "C" {
-
+#include <libavutil/imgutils.h>
+#include <libavutil/samplefmt.h>
+#include <libavutil/timestamp.h>
+#include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#include <libavformat/avio.h>
 }
 
-#include "ffmpeg_encoder.hpp"
-#include "fps_limiter.hpp"
+#include "ffmpeg_decoder.hpp"
 
 using std::println;
 
@@ -44,77 +45,43 @@ auto GenerateRGBFlowEffect(int frame_index, int width, int height) {
 }
 
 int main() {
+    constexpr auto url = "rtmp://127.0.0.1:8080/live";
+    int counter{};
     AVDictionary* options = NULL;
-    AVFormatContext* flv_fmt_ctx = nullptr;
+    AVFormatContext* fmt_ctx = nullptr;
+    AVIOContext* io_ctx = nullptr;
     AVStream* video_stream = nullptr;
 
     int ret;
-    if ((ret = av_dict_set(&options, "listen", "2", 0)) < 0) {
+    if ((ret = av_dict_set(&options, "listen", "1", 0)) < 0) {
         println("Failed to set listen mode for server");
         return ret;
     }
 
-    ret = avformat_alloc_output_context2(&flv_fmt_ctx, nullptr, "flv", nullptr);
-    if (ret < 0) {
-        println("Could not allocate output format context!");
-        return 1;
-    }
-
-    st::FFMpegEncoder::Config config;
-    config.frame_width = 1280;
-    config.frame_height = 720;
-    config.bitrate = 4000000;
-    config.frame_rate = 30;
-
-    st::FpsLimiter limiter{config.frame_rate};
-    st::FFMpegEncoder encoder{};
-    auto result = encoder.Init(config);
-    if (!result) {
-        println("Encoder init failed with error: {}", result.error().what());
-        return 1;
-    }
-
-    auto codec_ctx = encoder.codec_ctx();
-    video_stream = avformat_new_stream(flv_fmt_ctx, codec_ctx->codec);
-    ret = avcodec_parameters_from_context(video_stream->codecpar, codec_ctx);
-    if (ret < 0) {
-        println("Could not initialize stream codec parameters!");
-        return 1;
-    }
-
-    ret = avio_open2(&flv_fmt_ctx->pb, "rtmp://127.0.0.1:8080/live", AVIO_FLAG_WRITE, nullptr, &options);
+    ret = avformat_open_input(&fmt_ctx, url, nullptr, &options);
     if (ret < 0) {
         println("Failed to open server");
         return 1;
     }
+    println("Connection opened");
 
-    av_dump_format(flv_fmt_ctx, 0, "rtmp://127.0.0.1:8080/live", 1);
-
-    ret = avformat_write_header(flv_fmt_ctx, nullptr);
-    if (ret < 0) {
-        println("Could not write header!");
-        exit(1);
+    if (avformat_find_stream_info(fmt_ctx, NULL) < 0) {
+        println("Could not find stream information");
+        return 1;
     }
 
-    println("Start writing frames");
-    uint16_t counter{};
-    const cv::Scalar text_color(0, 0, 255);
-    const cv::Point point(20, 20);
-    for (;;) {
-        auto image = GenerateRGBFlowEffect(counter, config.frame_width, config.frame_height);
-        cv::putText(image, std::format("{}", counter), point, cv::FONT_HERSHEY_SIMPLEX, 0.5, text_color, 2);
-        encoder.Encode(image, [&](AVPacket* pkt) {
-            println("Writing packet: {}", counter++);
-            av_packet_rescale_ts(pkt, encoder.codec_ctx()->time_base, video_stream->time_base);
-            pkt->stream_index = video_stream->index;
-
-            av_interleaved_write_frame(flv_fmt_ctx, pkt);
-        });
-        limiter.Sleep();
+    AVPacket* pkt = av_packet_alloc();
+    if (!pkt) {
+        println("Could not allocate packet");
+        return 1;
     }
 
-    avio_close(flv_fmt_ctx->pb);
-    avformat_free_context(flv_fmt_ctx);
+    while (av_read_frame(fmt_ctx, pkt) >= 0) {
+        printf("video_frame n:%d\n", counter++);
+        av_packet_unref(pkt);
+        if (ret < 0) break;
+    }
 
+    println("Exiting");
     return 0;
 }

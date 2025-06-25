@@ -24,6 +24,7 @@ pkg_check_modules(libavutil REQUIRED IMPORTED_TARGET libavutil)
 
 add_library(common_runtime STATIC
     src/ffmpeg_encoder.cpp
+    src/ffmpeg_decoder.cpp
 )
 
 target_include_directories(common_runtime PUBLIC
@@ -44,10 +45,14 @@ target_compile_options(common_runtime PUBLIC
     -Wall -Wextra -Wuninitialized -Wno-unused-function -Wunused-variable -Wno-interference-size -ftemplate-depth=2048 -fconstexpr-depth=2048 $<$<CONFIG:Release>:-g0> $<$<CONFIG:Release>:-O3>
 )
 
-add_executable(rtmp_server
-    src/server.cpp
-)
+list(APPEND Exes server sender demux_decode)
 
-target_link_libraries(rtmp_server PRIVATE
-    common_runtime
-)
+foreach(exe IN LISTS Exes)
+    add_executable(rtmp_${exe}
+        src/${exe}.cpp
+    )   
+
+    target_link_libraries(rtmp_${exe} PRIVATE
+        common_runtime
+    )
+endforeach()
