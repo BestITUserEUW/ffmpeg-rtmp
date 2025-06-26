@@ -45,7 +45,7 @@ target_compile_options(common_runtime PUBLIC
     -Wall -Wextra -Wuninitialized -Wno-unused-function -Wunused-variable -Wno-interference-size -ftemplate-depth=2048 -fconstexpr-depth=2048 $<$<CONFIG:Release>:-g0> $<$<CONFIG:Release>:-O3>
 )
 
-list(APPEND Exes server sender demux_decode)
+list(APPEND Exes server sender)
 
 foreach(exe IN LISTS Exes)
     add_executable(rtmp_${exe}
