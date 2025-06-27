@@ -36,18 +36,18 @@ static int output_video_frame(AVFrame *frame) {
     if (frame->width != width || frame->height != height || frame->format != pix_fmt) {
         /* To handle this change, one could call av_image_alloc again and
          * decode the following frames into another rawvideo file. */
-        fprintf(stderr,
-                "Error: Width, height and pixel format have to be "
-                "constant in a rawvideo file, but the width, height or "
-                "pixel format of the input video changed:\n"
-                "old: width = %d, height = %d, format = %s\n"
-                "new: width = %d, height = %d, format = %s\n",
-                width, height, av_get_pix_fmt_name(pix_fmt), frame->width, frame->height,
-                av_get_pix_fmt_name((AVPixelFormat)frame->format));
+        println(
+            "Error: Width, height and pixel format have to be "
+            "constant in a rawvideo file, but the width, height or "
+            "pixel format of the input video changed:\n"
+            "old: width = {}, height = {}, format = {}\n"
+            "new: width = {}, height = {}, format = {}",
+            width, height, av_get_pix_fmt_name(pix_fmt), frame->width, frame->height,
+            av_get_pix_fmt_name(static_cast<AVPixelFormat>(frame->format)));
         return -1;
     }
 
-    printf("video_frame n:%d\n", video_frame_count++);
+    println("Saving video frame={}", video_frame_count++);
 
     /* copy decoded frame to destination buffer:
      * this is required since rawvideo expects non aligned data */
@@ -90,10 +90,7 @@ static int decode_packet(AVCodecContext *dec, const AVPacket *pkt) {
     return ret;
 }
 
-static int open_codec_context(int *stream_idx,
-                              AVCodecContext **dec_ctx,
-                              AVFormatContext *fmt_ctx,
-                              enum AVMediaType type) {
+static int open_codec_context(int *stream_idx, AVCodecContext **dec_ctx, AVFormatContext *fmt_ctx, AVMediaType type) {
     int ret, stream_index;
     AVStream *st;
     const AVCodec *dec = NULL;
@@ -105,10 +102,10 @@ static int open_codec_context(int *stream_idx,
     } else {
         stream_index = ret;
         st = fmt_ctx->streams[stream_index];
-
-        dec = avcodec_find_decoder(st->codecpar->codec_id);
+        // FIX_ME: Fallback to default h264 decoder if it cannot find it
+        dec = avcodec_find_decoder_by_name("h264_cuvid");
         if (!dec) {
-            fprintf(stderr, "Failed to find %s codec\n", av_get_media_type_string(type));
+            fprintf(stderr, "Failed to find h264_cuvid codec\n");
             return AVERROR(EINVAL);
         }
         println("Incoming stream media_type={} codec={}", av_get_media_type_string(type),

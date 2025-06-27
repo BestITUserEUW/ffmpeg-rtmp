@@ -16,15 +16,17 @@ add_subdirectory(thirdParty)
 find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(mimalloc REQUIRED)
 
 pkg_search_module(x264 REQUIRED IMPORTED_TARGET x264)
 pkg_search_module(libavcodec REQUIRED IMPORTED_TARGET libavcodec)
 pkg_search_module(libswscale REQUIRED IMPORTED_TARGET libswscale)
 pkg_check_modules(libavutil REQUIRED IMPORTED_TARGET libavutil)
+pkg_check_modules(libavformat REQUIRED IMPORTED_TARGET libavformat)
 
 add_library(common_runtime STATIC
-    src/ffmpeg_encoder.cpp
-    src/ffmpeg_decoder.cpp
+    src/h264_encoder.cpp
+    src/libav_helpers.cpp
 )
 
 target_include_directories(common_runtime PUBLIC
@@ -38,11 +40,17 @@ target_link_libraries(common_runtime PUBLIC
     PkgConfig::libavcodec
     PkgConfig::libswscale
     PkgConfig::libavutil
+    PkgConfig::libavformat
+    mimalloc-static
     ${OpenCV_LIBS}
 )
 
 target_compile_options(common_runtime PUBLIC
     -Wall -Wextra -Wuninitialized -Wno-unused-function -Wunused-variable -Wno-interference-size -ftemplate-depth=2048 -fconstexpr-depth=2048 $<$<CONFIG:Release>:-g0> $<$<CONFIG:Release>:-O3>
+)
+
+target_link_options(common_runtime PUBLIC
+    -static-libgcc -static-libstdc++ $<$<CONFIG:Release>:-s>
 )
 
 list(APPEND Exes server sender)

@@ -24,12 +24,21 @@ else()
     set(FFMPEG_BUILD_TYPE "--release")
 endif()
 
+set(EXTRA_C_FLAGS -I${CMAKE_INSTALL_PREFIX}/include -I/usr/local/cuda/include)
+set(EXTRA_LD_FLAGS -L${CMAKE_INSTALL_PREFIX}/lib -L/usr/local/cuda/lib64)
+set(EXTRA_LIBS -lpthread)
+
+list(JOIN EXTRA_C_FLAGS " " JOINED_EXTRA_C_FLAGS)
+list(JOIN EXTRA_LD_FLAGS " " JOINED_EXTRA_LD_FLAGS)
+list(JOIN EXTRA_LIBS " " JOINED_EXTRA_LIBS)
+
+# Make sure the flags are joined properly but avoid extra quoting that causes issues
 set(CONFIGURE_ARGS
     --arch=${FFMPEG_PLATFORM}
     --prefix=${CMAKE_INSTALL_PREFIX}
-    --extra-ldflags="-L${CMAKE_INSTALL_PREFIX}/lib"
-    --extra-cflags="-I${CMAKE_INSTALL_PREFIX}/include"
-    --extra-libs="-lpthread"
+    "--extra-cflags=${JOINED_EXTRA_C_FLAGS}"
+    "--extra-ldflags=${JOINED_EXTRA_LD_FLAGS}"
+    "--extra-libs=${JOINED_EXTRA_LIBS}"
     --enable-nonfree
     --enable-gpl
     --disable-programs

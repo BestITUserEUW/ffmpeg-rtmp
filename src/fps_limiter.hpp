@@ -21,7 +21,7 @@ public:
             std::this_thread::sleep_for(milliseconds(target_frame_duration_ - elapsed.count()));
         }
 
-        last_frame_time_ = steady_clock::now();  // Reset after sleep to maintain rhythm
+        last_frame_time_ = steady_clock::now();
     }
 
 private:
