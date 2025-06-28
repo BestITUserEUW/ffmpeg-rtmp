@@ -27,6 +27,7 @@ pkg_check_modules(libavformat REQUIRED IMPORTED_TARGET libavformat)
 add_library(common_runtime STATIC
     src/h264_encoder.cpp
     src/libav_helpers.cpp
+    src/rtmp_server.cpp
 )
 
 target_include_directories(common_runtime PUBLIC

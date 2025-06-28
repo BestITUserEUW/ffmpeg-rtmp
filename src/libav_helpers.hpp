@@ -2,6 +2,9 @@
 
 #include <memory>
 
+#include "image.hpp"
+#include "expected.hpp"
+
 // Forward declare libav stuff so we don't polute our headers
 struct AVDictionary;
 struct AVPacket;
@@ -67,12 +70,23 @@ using UniqueDictionaryPtr = std::unique_ptr<AVDictionary, detail::DictionaryDele
 using UniqueFormatContextPtr = std::unique_ptr<AVFormatContext, detail::FormatContextDeleter>;
 using UniqueIoContextPtr = std::unique_ptr<AVIOContext, detail::IoContextDeleter>;
 
+// make this move only
+struct ImageBuffer {
+    ImageBuffer();
+    ImageBuffer(ImageSize size, int pix_fmt);
+    ~ImageBuffer();
+
+    uint8_t* data[4];
+    int linesizes[4];
+    int pix_fmt;
+    size_t data_size;
+};
+
 auto MakeUniquePacket() -> UniquePacketPtr;
 auto MakeUniqueFrame() -> UniqueFramePtr;
 auto MakeUniqueCodecParserContext(int codec_id) -> UniqueCodecParserContextPtr;
 auto MakeUniqueCodecContext(const AVCodec* codec) -> UniqueCodecContextPtr;
 auto MakeUniqueBsfContext(const AVBitStreamFilter* filter) -> UniqueBsfContextPtr;
-auto GetSwsConvertFormatContext(int src_format, int dst_format, int width, int height, int flags)
-    -> UniqueSwsContextPtr;
+auto GetSwsConvertFormatContext(int from, int to, ImageSize size, int flags) -> UniqueSwsContextPtr;
 
 }  // namespace st::libav

@@ -11,30 +11,27 @@ namespace st {
 
 class H264Encoder {
 public:
-    enum class Error { kOk, kSendFailed, kEncodeFailed, kParseFailed, kNoFrame, kUnknown };
-    using OnDataFn = std::function<void(AVPacket*)>;
+    using OnPacketFn = std::function<void(libav::UniquePacketPtr)>;
 
     struct Settings {
-        int frame_width;
-        int frame_height;
+        ImageSize size;
         int frame_rate;
         int bitrate;
     };
 
-    H264Encoder() = default;
+    H264Encoder();
     ~H264Encoder();
 
-    auto Init(Settings settings) -> void_expected;
-    void DeInit();
+    auto Open(Settings settings) -> void_expected;
+    void Close();
 
-    auto Encode(const Image& image, OnDataFn on_data) -> Error;
+    auto Encode(const Image& image, OnPacketFn on_packet) -> void_expected;
     auto codec_ctx() { return codec_ctx_.get(); }
 
 private:
-    libav::UniqueCodecContextPtr codec_ctx_{};
-    libav::UniqueSwsContextPtr sws_ctx_{};
-    libav::UniqueFramePtr frame_{};
-    libav::UniquePacketPtr packet_{};
+    libav::UniqueCodecContextPtr codec_ctx_;
+    libav::UniqueSwsContextPtr sws_ctx_;
+    libav::UniqueFramePtr frame_;
 };
 
 }  // namespace st

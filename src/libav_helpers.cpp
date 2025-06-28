@@ -6,6 +6,7 @@ extern "C" {
 #include <libavformat/avformat.h>
 #include <libavformat/avio.h>
 #include <libswscale/swscale.h>
+#include <libavutil/imgutils.h>
 }
 
 namespace st::libav {
@@ -23,6 +24,24 @@ void FormatContextDeleter::operator()(AVFormatContext* ptr) const { avformat_fre
 void IoContextDeleter::operator()(AVIOContext* ptr) const { avio_close(ptr); }
 
 }  // namespace detail
+
+ImageBuffer::ImageBuffer()
+    : data(nullptr),
+      linesizes(),
+      data_size() {}
+
+ImageBuffer::ImageBuffer(ImageSize size, int pix_fmt)
+    : data(nullptr),
+      linesizes(),
+      data_size() {
+    data_size = av_image_alloc(data, linesizes, size.width, size.height, static_cast<AVPixelFormat>(pix_fmt), 1);
+}
+
+ImageBuffer::~ImageBuffer() {
+    if (data[0]) {
+        av_freep(&data[0]);
+    }
+}
 
 auto MakeUniquePacket() -> UniquePacketPtr { return UniquePacketPtr(av_packet_alloc()); }
 
@@ -44,10 +63,9 @@ auto MakeUniqueBsfContext(const AVBitStreamFilter* filter) -> UniqueBsfContextPt
     return UniqueBsfContextPtr(ctx);
 }
 
-auto GetSwsConvertFormatContext(int src_format, int dst_format, int width, int height, int flags)
-    -> UniqueSwsContextPtr {
-    return UniqueSwsContextPtr(sws_getContext(width, height, static_cast<AVPixelFormat>(src_format), width, height,
-                                              static_cast<AVPixelFormat>(dst_format), flags, nullptr, nullptr,
+auto GetSwsConvertFormatContext(int from, int to, ImageSize size, int flags) -> UniqueSwsContextPtr {
+    return UniqueSwsContextPtr(sws_getContext(size.width, size.height, static_cast<AVPixelFormat>(from), size.width,
+                                              size.height, static_cast<AVPixelFormat>(to), flags, nullptr, nullptr,
                                               nullptr));
 }
 

@@ -6,6 +6,13 @@
 
 namespace st {
 
+struct ImageSize {
+    int width;
+    int height;
+
+    bool operator==(const ImageSize& size) const = default;
+};
+
 using ByteVector = std::vector<uint8_t>;
 using Image = cv::Mat;
 
