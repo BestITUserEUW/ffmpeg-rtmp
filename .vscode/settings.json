@@ -87,6 +87,7 @@
         "valarray": "cpp",
         "variant": "cpp",
         "*.inc": "cpp",
-        "generator": "cpp"
+        "generator": "cpp",
+        "coroutine": "cpp"
     },
 }

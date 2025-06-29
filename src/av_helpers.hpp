@@ -3,7 +3,6 @@
 #include <memory>
 
 #include "image.hpp"
-#include "expected.hpp"
 
 // Forward declare libav stuff so we don't polute our headers
 struct AVDictionary;
@@ -18,7 +17,7 @@ struct AVCodec;
 struct AVFormatContext;
 struct AVIOContext;
 
-namespace st::libav {
+namespace oryx::av {
 
 namespace detail {
 
@@ -89,4 +88,4 @@ auto MakeUniqueCodecContext(const AVCodec* codec) -> UniqueCodecContextPtr;
 auto MakeUniqueBsfContext(const AVBitStreamFilter* filter) -> UniqueBsfContextPtr;
 auto GetSwsConvertFormatContext(int from, int to, ImageSize size, int flags) -> UniqueSwsContextPtr;
 
-}  // namespace st::libav
+}  // namespace oryx::av

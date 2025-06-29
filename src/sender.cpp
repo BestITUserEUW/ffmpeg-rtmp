@@ -4,6 +4,7 @@
 #include <format>
 #include <optional>
 #include <csignal>
+#include <atomic>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/utils/logger.hpp>
@@ -15,12 +16,13 @@ extern "C" {
 #include <libavutil/opt.h>
 }
 
+#include <oryx/chrono/frame_rate_controller.hpp>
+#include <oryx/argparse.hpp>
+
 #include "h264_encoder.hpp"
-#include "fps_limiter.hpp"
-#include "argparse.hpp"
 
 using std::println;
-using namespace st;
+using namespace oryx;
 
 using ImageGenerator = std::generator<Image>;
 
@@ -29,9 +31,9 @@ static auto CreateRgbFlowEffectGenerator(ImageSize size, int frame_rate, auto sh
     const auto tp = cv::Point(width / 2, height / 2);
     const auto tc = cv::Scalar(0, 0, 255);
 
+    chrono::FrameRateController fr_controller(frame_rate);
     Image yuv(height + height / 2, width, CV_8UC1);
     Image bgr;
-    FpsLimiter limiter{frame_rate};
     int index{};
     std::string text;
 
@@ -63,7 +65,7 @@ static auto CreateRgbFlowEffectGenerator(ImageSize size, int frame_rate, auto sh
 
         co_yield bgr;
         index++;
-        limiter.Sleep();
+        fr_controller.Sleep();
     }
 }
 
@@ -144,7 +146,7 @@ auto main(int argc, char* argv[]) -> int {
         return 1;
     }
 
-    libav::UniqueFormatContextPtr fmt_ctx([] {
+    av::UniqueFormatContextPtr fmt_ctx([] {
         AVFormatContext* raw{};
         avformat_alloc_output_context2(&raw, nullptr, "flv", nullptr);
         return raw;
@@ -164,7 +166,7 @@ auto main(int argc, char* argv[]) -> int {
     }
 
     println("Trying to connect to {}", url);
-    libav::UniqueIoContextPtr rtmp_ctx{[&] {
+    av::UniqueIoContextPtr rtmp_ctx{[&] {
         AVIOContext* raw;
         avio_open2(&raw, url.c_str(), AVIO_FLAG_WRITE, nullptr, nullptr);
         return raw;
@@ -192,7 +194,7 @@ auto main(int argc, char* argv[]) -> int {
     }();
 
     for (auto image : generator) {
-        const auto result = encoder.Encode(image, [&](libav::UniquePacketPtr pkt) {
+        const auto result = encoder.Encode(image, [&](av::UniquePacketPtr pkt) {
             av_packet_rescale_ts(pkt.get(), codec_ctx->time_base, video_stream->time_base);
             pkt->stream_index = video_stream->index;
             ret = av_interleaved_write_frame(fmt_ctx.get(), pkt.get());

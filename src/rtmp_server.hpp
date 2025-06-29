@@ -5,11 +5,13 @@
 #include <thread>
 #include <functional>
 
-#include "expected.hpp"
-#include "libav_helpers.hpp"
-#include "spsc_queue.h"
+#include <oryx/expected.hpp>
+#include <oryx/spsc_queue.hpp>
 
-namespace st {
+#include "av_helpers.hpp"
+#include "av_error.hpp"
+
+namespace oryx {
 
 /**
  * @brief Single RTMP Connection server. Only accepts one connection at a time
@@ -47,18 +49,18 @@ public:
 
 private:
     void SubmitError(Error&& error) const;
-    auto Decode(AVPacket* packet) -> void_expected;
-    auto OpenCodecContext() -> void_expected;
+    auto Decode(AVPacket* packet) -> void_expected<av::Error>;
+    auto OpenCodecContext() -> void_expected<av::Error>;
 
     void ReadWorker(std::stop_token stoken);
     void DecodeWorker(std::stop_token stoken);
 
     Settings settings_;
-    libav::UniqueFramePtr frame_;
-    libav::UniqueCodecContextPtr dec_ctx_;
-    libav::UniqueSwsContextPtr sws_ctx_;
-    libav::UniqueFormatContextPtr fmt_ctx_;
-    folly::ProducerConsumerQueue<libav::UniquePacketPtr> queue_;
+    av::UniqueFramePtr frame_;
+    av::UniqueCodecContextPtr dec_ctx_;
+    av::UniqueSwsContextPtr sws_ctx_;
+    av::UniqueFormatContextPtr fmt_ctx_;
+    folly::ProducerConsumerQueue<av::UniquePacketPtr> queue_;
     OnImageFn on_image_;
     OnErrorFn on_error_;
     OnConnectedFn on_connect_;
@@ -72,4 +74,4 @@ private:
     int buffer_data_size;
 };
 
-}  // namespace st
+}  // namespace oryx

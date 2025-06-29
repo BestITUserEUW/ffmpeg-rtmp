@@ -9,20 +9,20 @@ extern "C" {
 #include <libavutil/opt.h>
 }
 
-#include "libav_error.hpp"
+#include "av_error.hpp"
 
 [[maybe_unused]] static constexpr char kMissingInitMessage[] = "Init should be called before using H264Encoder::Encode";
 
-namespace st {
+namespace oryx {
 
 H264Encoder::H264Encoder()
     : codec_ctx_(),
       sws_ctx_(),
-      frame_(libav::MakeUniqueFrame()) {}
+      frame_(av::MakeUniqueFrame()) {}
 
 H264Encoder::~H264Encoder() { Close(); }
 
-auto H264Encoder::Open(Settings settings) -> void_expected {
+auto H264Encoder::Open(Settings settings) -> void_expected<av::Error> {
     auto codec = avcodec_find_encoder_by_name("h264_nvenc");
     if (!codec) {
         // Let ffmpeg decide if nvenc is not available
@@ -30,10 +30,10 @@ auto H264Encoder::Open(Settings settings) -> void_expected {
     }
 
     if (!codec) {
-        return UnexpectedError("Failed to find h264 encoder");
+        return av::UnexpectedError(AVERROR_ENCODER_NOT_FOUND);
     }
 
-    codec_ctx_ = libav::MakeUniqueCodecContext(codec);
+    codec_ctx_ = av::MakeUniqueCodecContext(codec);
     codec_ctx_->bit_rate = settings.bitrate;
     codec_ctx_->width = settings.size.width;
     codec_ctx_->height = settings.size.height;
@@ -45,7 +45,7 @@ auto H264Encoder::Open(Settings settings) -> void_expected {
 
     int ret = avcodec_open2(codec_ctx_.get(), codec, nullptr);
     if (ret < 0) {
-        return libav::UnexpectedError(ret);
+        return av::UnexpectedError(ret);
     }
 
     frame_->format = codec_ctx_->pix_fmt;
@@ -55,12 +55,12 @@ auto H264Encoder::Open(Settings settings) -> void_expected {
 
     ret = av_frame_get_buffer(frame_.get(), 0);
     if (ret < 0) {
-        return libav::UnexpectedError(ret);
+        return av::UnexpectedError(ret);
     }
 
-    sws_ctx_ = libav::GetSwsConvertFormatContext(AV_PIX_FMT_BGR24, codec_ctx_->pix_fmt, settings.size, SWS_BILINEAR);
+    sws_ctx_ = av::GetSwsConvertFormatContext(AV_PIX_FMT_BGR24, codec_ctx_->pix_fmt, settings.size, SWS_BILINEAR);
     if (!sws_ctx_) {
-        return libav::UnexpectedError(ret);
+        return av::UnexpectedError(ret);
     }
     return kVoidExpected;
 }
@@ -70,7 +70,7 @@ void H264Encoder::Close() {
     codec_ctx_.reset();
 }
 
-auto H264Encoder::Encode(const Image& image, OnPacketFn on_packet) -> void_expected {
+auto H264Encoder::Encode(const Image& image, OnPacketFn on_packet) -> void_expected<av::Error> {
     assert(frame_ && kMissingInitMessage);
     assert(codec_ctx_ && kMissingInitMessage);
     assert(sws_ctx_ && kMissingInitMessage);
@@ -81,7 +81,7 @@ auto H264Encoder::Encode(const Image& image, OnPacketFn on_packet) -> void_expec
 
     int ret = av_frame_make_writable(frame_.get());
     if (ret < 0) {
-        return libav::UnexpectedError(ret);
+        return av::UnexpectedError(ret);
     }
 
     const uint8_t* frame_slice[] = {image.data};
@@ -91,18 +91,18 @@ auto H264Encoder::Encode(const Image& image, OnPacketFn on_packet) -> void_expec
 
     ret = avcodec_send_frame(codec_ctx_ptr, frame_.get());
     if (ret < 0) {
-        return libav::UnexpectedError(ret);
+        return av::UnexpectedError(ret);
     }
 
     frame_->pts++;
 
     while (ret >= 0) {
-        auto packet = libav::MakeUniquePacket();
+        auto packet = av::MakeUniquePacket();
         ret = avcodec_receive_packet(codec_ctx_ptr, packet.get());
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
             return kVoidExpected;
         } else if (ret < 0) {
-            return libav::UnexpectedError(ret);
+            return av::UnexpectedError(ret);
         } else {
             on_packet(std::move(packet));
         }
@@ -110,4 +110,4 @@ auto H264Encoder::Encode(const Image& image, OnPacketFn on_packet) -> void_expec
     return kVoidExpected;
 }
 
-}  // namespace st
+}  // namespace oryx

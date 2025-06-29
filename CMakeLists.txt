@@ -17,6 +17,7 @@ find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(mimalloc REQUIRED)
+find_package(oryx-crt-cpp REQUIRED)
 
 pkg_search_module(x264 REQUIRED IMPORTED_TARGET x264)
 pkg_search_module(libavcodec REQUIRED IMPORTED_TARGET libavcodec)
@@ -26,7 +27,7 @@ pkg_check_modules(libavformat REQUIRED IMPORTED_TARGET libavformat)
 
 add_library(common_runtime STATIC
     src/h264_encoder.cpp
-    src/libav_helpers.cpp
+    src/av_helpers.cpp
     src/rtmp_server.cpp
 )
 
@@ -42,6 +43,7 @@ target_link_libraries(common_runtime PUBLIC
     PkgConfig::libswscale
     PkgConfig::libavutil
     PkgConfig::libavformat
+    oryx::oryx-crt-cpp
     mimalloc-static
     ${OpenCV_LIBS}
 )

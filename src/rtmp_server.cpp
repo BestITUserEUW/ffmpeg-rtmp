@@ -10,15 +10,16 @@ extern "C" {
 #include <libavutil/opt.h>
 }
 
-#include "enchantum.hpp"
-#include "libav_helpers.hpp"
-#include "libav_error.hpp"
+#include <oryx/enchantum.hpp>
 
-namespace st {
+#include "av_helpers.hpp"
+#include "av_error.hpp"
+
+namespace oryx {
 
 RtmpServer::RtmpServer(Settings settings)
     : settings_(settings),
-      frame_(libav::MakeUniqueFrame()),
+      frame_(av::MakeUniqueFrame()),
       dec_ctx_(),
       sws_ctx_(),
       queue_(settings.queue_size),
@@ -54,12 +55,12 @@ void RtmpServer::SubmitError(Error&& error) const {
     }
 }
 
-auto RtmpServer::Decode(AVPacket* packet) -> void_expected {
+auto RtmpServer::Decode(AVPacket* packet) -> void_expected<av::Error> {
     auto dec = dec_ctx_.get();
 
     int ret = avcodec_send_packet(dec, packet);
     if (ret < 0) {
-        return libav::UnexpectedError(ret);
+        return av::UnexpectedError(ret);
     }
 
     // get all the available frames from the decoder
@@ -72,7 +73,7 @@ auto RtmpServer::Decode(AVPacket* packet) -> void_expected {
             if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN)) {
                 return kVoidExpected;
             }
-            return libav::UnexpectedError(ret);
+            return av::UnexpectedError(ret);
         }
 
         sws_scale(sws_ctx_.get(), frame->data, frame->linesize, 0, frame->height, buffer_data, buffer_ls);
@@ -86,10 +87,10 @@ auto RtmpServer::Decode(AVPacket* packet) -> void_expected {
     return kVoidExpected;
 }
 
-auto RtmpServer::OpenCodecContext() -> void_expected {
+auto RtmpServer::OpenCodecContext() -> void_expected<av::Error> {
     int ret = av_find_best_stream(fmt_ctx_.get(), AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
     if (ret < 0) {
-        return libav::UnexpectedError(ret);
+        return av::UnexpectedError(ret);
     }
 
     video_stream_index_ = ret;
@@ -111,24 +112,24 @@ auto RtmpServer::OpenCodecContext() -> void_expected {
     }
 
     /* Allocate a codec context for the decoder */
-    dec_ctx_ = libav::MakeUniqueCodecContext(codec);
+    dec_ctx_ = av::MakeUniqueCodecContext(codec);
 
     /* Copy codec parameters from input stream to output codec context */
     ret = avcodec_parameters_to_context(dec_ctx_.get(), stream->codecpar);
     if (ret < 0) {
-        return libav::UnexpectedError(ret);
+        return av::UnexpectedError(ret);
     }
 
     /* Init the decoder */
     ret = avcodec_open2(dec_ctx_.get(), codec, NULL);
     if (ret < 0) {
-        return libav::UnexpectedError(ret);
+        return av::UnexpectedError(ret);
     }
     return kVoidExpected;
 }
 
 void RtmpServer::DecodeWorker(std::stop_token stoken) {
-    libav::UniquePacketPtr packet;
+    av::UniquePacketPtr packet;
     while (!stoken.stop_requested()) {
         if (!queue_.read(packet)) {
             continue;
@@ -161,17 +162,17 @@ void RtmpServer::ReadWorker(std::stop_token stoken) {
 
         int ret = avformat_open_input(&fmt_ctx, settings_.url.c_str(), nullptr, &rtmp_options);
         if (ret < 0) {
-            if (ret != AVERROR_EXIT) SubmitError(libav::MakeError(ret));
+            if (ret != AVERROR_EXIT) SubmitError(av::MakeError(ret));
             continue;
         }
 
         if (rtmp_options) av_dict_free(&rtmp_options);
 
-        fmt_ctx_ = libav::UniqueFormatContextPtr(fmt_ctx);
+        fmt_ctx_ = av::UniqueFormatContextPtr(fmt_ctx);
 
         ret = avformat_find_stream_info(fmt_ctx, NULL);
         if (ret < 0) {
-            SubmitError(libav::MakeError(ret));
+            SubmitError(av::MakeError(ret));
             continue;
         }
 
@@ -192,14 +193,14 @@ void RtmpServer::ReadWorker(std::stop_token stoken) {
         }
 
         decode_worker_ = std::make_unique<std::jthread>(&RtmpServer::DecodeWorker, this);
-        sws_ctx_ = libav::GetSwsConvertFormatContext(dec_ctx_->pix_fmt, AV_PIX_FMT_BGR24, dec_size, SWS_BILINEAR);
+        sws_ctx_ = av::GetSwsConvertFormatContext(dec_ctx_->pix_fmt, AV_PIX_FMT_BGR24, dec_size, SWS_BILINEAR);
         buffer_data_size = av_image_alloc(buffer_data, buffer_ls, dec_size.width, dec_size.height, AV_PIX_FMT_BGR24, 1);
 
         av_dump_format(fmt_ctx, 0, settings_.url.c_str(), 0);
 
-        libav::UniquePacketPtr packet;
+        av::UniquePacketPtr packet;
         while (ret >= 0) {
-            packet = libav::MakeUniquePacket();
+            packet = av::MakeUniquePacket();
             ret = av_read_frame(fmt_ctx, packet.get());
             if (ret < 0) {
                 break;
@@ -228,4 +229,4 @@ void RtmpServer::ReadWorker(std::stop_token stoken) {
     }
 }
 
-}  // namespace st
+}  // namespace oryx

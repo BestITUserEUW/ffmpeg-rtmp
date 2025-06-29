@@ -4,7 +4,7 @@
 
 #include <opencv2/core/mat.hpp>
 
-namespace st {
+namespace oryx {
 
 struct ImageSize {
     int width;
@@ -16,4 +16,4 @@ struct ImageSize {
 using ByteVector = std::vector<uint8_t>;
 using Image = cv::Mat;
 
-}  // namespace st
+}  // namespace oryx

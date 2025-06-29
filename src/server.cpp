@@ -5,18 +5,19 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/utils/logger.hpp>
 
-#include "enchantum.hpp"
+#include <oryx/enchantum.hpp>
+#include <oryx/argparse.hpp>
+
 #include "rtmp_server.hpp"
-#include "argparse.hpp"
 
 using std::println;
-using namespace st;
+using namespace oryx;
 
 std::unique_ptr<RtmpServer> server;
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        println("Example Usage:\n {} rtmp://127.0.0.1:8080/live", argv[0]);
+        println("Example Usage:\n {} --url rtmp://127.0.0.1:8080/live", argv[0]);
         return 1;
     }
 

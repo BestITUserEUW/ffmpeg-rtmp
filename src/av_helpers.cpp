@@ -1,4 +1,4 @@
-#include "libav_helpers.hpp"
+#include "av_helpers.hpp"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -9,7 +9,7 @@ extern "C" {
 #include <libavutil/imgutils.h>
 }
 
-namespace st::libav {
+namespace oryx::av {
 
 namespace detail {
 
@@ -69,4 +69,4 @@ auto GetSwsConvertFormatContext(int from, int to, ImageSize size, int flags) -> 
                                               nullptr));
 }
 
-}  // namespace st::libav
+}  // namespace oryx::av
