@@ -21,3 +21,15 @@ cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Debug -Bbuild -H.
 ```bash
 cmake --build build -j32
 ```
+
+## Run server
+
+```bash
+./build/rtmp_server --url rtmp://127.0.0.1:8080/live
+```
+
+## Run sender
+
+```bash
+./build/rtmp_sender --url rtmp://127.0.0.1:8080/live
+```
