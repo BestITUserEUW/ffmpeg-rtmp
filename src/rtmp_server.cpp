@@ -1,7 +1,5 @@
 #include "rtmp_server.hpp"
 
-#include <print>
-
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -18,11 +16,11 @@ extern "C" {
 namespace oryx {
 
 RtmpServer::RtmpServer(Settings settings)
-    : settings_(settings),
+    : settings_(std::move(settings)),
       frame_(av::MakeUniqueFrame()),
       dec_ctx_(),
       sws_ctx_(),
-      queue_(settings.queue_size),
+      queue_(settings_.queue_size),
       on_image_(),
       on_error_(),
       on_connect_(),
@@ -44,10 +42,10 @@ void RtmpServer::Stop() {
     decode_worker_.reset();
 }
 
-void RtmpServer::SetImageHandler(OnImageFn on_image) { on_image_ = on_image; }
-void RtmpServer::SetErrorHandler(OnErrorFn on_error) { on_error_ = on_error; }
-void RtmpServer::SetConnectedHandler(OnConnectedFn on_connect) { on_connect_ = on_connect; }
-void RtmpServer::SetDisconnectedHandler(OnDisconnectedFn on_disconnect) { on_disconnect_ = on_disconnect; }
+void RtmpServer::SetImageHandler(OnImageFn on_image) { on_image_ = std::move(on_image); }
+void RtmpServer::SetErrorHandler(OnErrorFn on_error) { on_error_ = std::move(on_error); }
+void RtmpServer::SetConnectedHandler(OnConnectedFn on_connect) { on_connect_ = std::move(on_connect); }
+void RtmpServer::SetDisconnectedHandler(OnDisconnectedFn on_disconnect) { on_disconnect_ = std::move(on_disconnect); }
 
 void RtmpServer::SubmitError(Error&& error) const {
     if (on_error_) {

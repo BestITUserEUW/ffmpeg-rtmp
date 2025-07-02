@@ -10,7 +10,7 @@ struct ImageSize {
     int width;
     int height;
 
-    bool operator==(const ImageSize& size) const = default;
+    auto operator==(const ImageSize& size) const -> bool = default;
 };
 
 using ByteVector = std::vector<uint8_t>;

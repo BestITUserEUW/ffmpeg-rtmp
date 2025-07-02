@@ -1,8 +1,6 @@
 #include <print>
 #include <generator>
-#include <functional>
 #include <format>
-#include <optional>
 #include <csignal>
 #include <atomic>
 
@@ -193,7 +191,7 @@ auto main(int argc, char* argv[]) -> int {
             return CreateRgbFlowEffectGenerator(settings.size, settings.frame_rate, generator_should_stop);
     }();
 
-    for (auto image : generator) {
+    for (const auto& image : generator) {
         const auto result = encoder.Encode(image, [&](av::UniquePacketPtr pkt) {
             av_packet_rescale_ts(pkt.get(), codec_ctx->time_base, video_stream->time_base);
             pkt->stream_index = video_stream->index;
